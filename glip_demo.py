@@ -118,21 +118,53 @@ class GLIPModel(object):
 
         return result_image
 
-    def inference(self, image, caption, score_thresh, need_draw=False):
-        # import ipdb; ipdb.set_trace(context=10)
-        image = self.load(image)
-        results = self.glip.run(image, caption, thresh=score_thresh)
+    # def inference(self, image, caption, score_thresh, need_draw=False):
+    #     # import ipdb; ipdb.set_trace(context=10)
+    #     image = self.load(image)
+    #     results = self.glip.run(image, caption, thresh=score_thresh)
+    #
+    #     if need_draw:
+    #         result_image = self.draw_with_results(image, results)
+    #         results['boxes'] = results['boxes'].numpy().tolist()
+    #         results['class_idx'] = results['class_idx'].numpy().tolist()
+    #         # results['result_image'] = result_image.tolist()
+    #         return results, result_image[..., ::-1]
+    #     else:
+    #         results['boxes'] = results['boxes'].numpy().tolist()
+    #         results['class_idx'] = results['class_idx'].numpy().tolist()
+    #         return results, None
 
-        if need_draw:
-            result_image = self.draw_with_results(image, results)
-            results['boxes'] = results['boxes'].numpy().tolist()
-            results['class_idx'] = results['class_idx'].numpy().tolist()
-            # results['result_image'] = result_image.tolist()
-            return results, result_image[..., ::-1]
-        else:
-            results['boxes'] = results['boxes'].numpy().tolist()
-            results['class_idx'] = results['class_idx'].numpy().tolist()
-            return results, None
+    def inference(self, image_data, caption, score_thresh, need_draw=False):
+        import base64
+        from io import BytesIO
+        from PIL import Image
+
+        try:
+            # Handle base64 string (remove data URI prefix if present)
+            if image_data.startswith('data:image'):
+                image_data = image_data.split(',')[1]
+
+            # Decode base64 to PIL Image
+            image_bytes = base64.b64decode(image_data)
+            pil_image = Image.open(BytesIO(image_bytes))
+
+            # Rest of your original processing
+            image = self.load(pil_image)  # Convert to OpenCV format
+            results = self.glip.run(image, caption, thresh=score_thresh)
+
+            if need_draw:
+                result_image = self.draw_with_results(image, results)
+                results['boxes'] = results['boxes'].numpy().tolist()
+                results['class_idx'] = results['class_idx'].numpy().tolist()
+                return results, result_image[..., ::-1]  # BGR to RGB
+            else:
+                results['boxes'] = results['boxes'].numpy().tolist()
+                results['class_idx'] = results['class_idx'].numpy().tolist()
+                return results, None
+
+        except Exception as e:
+            print(f"Server error: {str(e)}")
+            raise e
 
     @staticmethod
     def imshow(img, caption, image_name='debug_output.png'):
